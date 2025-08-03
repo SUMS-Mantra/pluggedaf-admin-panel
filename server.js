@@ -91,11 +91,24 @@ app.get('/api/config/supabase', (req, res) => {
 
 // Backend API configuration
 app.get('/api/config/backend', (req, res) => {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.FORCE_PRODUCTION_BACKEND === 'true';
+  
+  // Always use production URL if it's set and we're in production mode
+  // or if local URL is not available, or if forced to production
+  let apiUrl;
+  if (isProduction || !process.env.BACKEND_API_URL_LOCAL) {
+    apiUrl = process.env.BACKEND_API_URL || 'https://plugged-backend.onrender.com';
+  } else {
+    apiUrl = process.env.BACKEND_API_URL_LOCAL || 'http://localhost:8000';
+  }
+  
+  console.log(`Backend config requested: Environment=${process.env.NODE_ENV}, Force Production=${process.env.FORCE_PRODUCTION_BACKEND}, Using URL=${apiUrl}`);
+  
   res.json({
-    apiUrl: isProduction ? process.env.BACKEND_API_URL : process.env.BACKEND_API_URL_LOCAL,
+    apiUrl: apiUrl,
     environment: process.env.NODE_ENV || 'development',
-    isProduction
+    isProduction: isProduction,
+    forceProduction: process.env.FORCE_PRODUCTION_BACKEND === 'true'
   });
 });
 
@@ -109,6 +122,46 @@ app.post('/api/config/supabase', (req, res) => {
   }
   
   res.json({ success: true });
+});
+
+// Test backend connection endpoint
+app.get('/api/test-backend', async (req, res) => {
+  try {
+    const backendUrl = process.env.BACKEND_API_URL || 'https://plugged-backend.onrender.com';
+    console.log(`Testing backend connection to: ${backendUrl}`);
+    
+    const fetch = require('node-fetch');
+    const response = await fetch(`${backendUrl}/api/health`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 10000
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      res.json({
+        success: true,
+        backend_url: backendUrl,
+        backend_status: response.status,
+        backend_response: data
+      });
+    } else {
+      res.json({
+        success: false,
+        backend_url: backendUrl,
+        backend_status: response.status,
+        error: `Backend returned ${response.status}`
+      });
+    }
+  } catch (error) {
+    res.json({
+      success: false,
+      backend_url: process.env.BACKEND_API_URL || 'https://plugged-backend.onrender.com',
+      error: error.message
+    });
+  }
 });
 
 // Session management (in-memory for demo - use Redis or database in production)

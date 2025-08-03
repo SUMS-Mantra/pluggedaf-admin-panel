@@ -10,14 +10,21 @@ window.webAPI = {
         const response = await fetch('/api/config/backend');
         this.backendConfig = await response.json();
         console.log('Backend config loaded:', this.backendConfig);
+        
+        // Additional validation
+        if (!this.backendConfig.apiUrl) {
+          throw new Error('No backend API URL configured');
+        }
+        
       } catch (error) {
         console.error('Failed to load backend config:', error);
-        // Fallback to local development
+        // Fallback to production URL directly from environment or hardcoded
         this.backendConfig = {
-          apiUrl: 'http://localhost:8000',
-          environment: 'development',
-          isProduction: false
+          apiUrl: 'https://plugged-backend.onrender.com',
+          environment: 'production',
+          isProduction: true
         };
+        console.log('Using fallback backend config:', this.backendConfig);
       }
     }
     return this.backendConfig;
@@ -184,6 +191,15 @@ window.webAPI = {
   // Backend API methods
   async testBackendConnection() {
     try {
+      // First try through our server's test endpoint
+      const serverResponse = await fetch('/api/test-backend');
+      const serverResult = await serverResponse.json();
+      
+      if (serverResult.success) {
+        return { success: true, data: serverResult };
+      }
+      
+      // If that fails, try direct connection
       const result = await this.callBackendAPI('/api/health');
       return { success: true, data: result };
     } catch (error) {
