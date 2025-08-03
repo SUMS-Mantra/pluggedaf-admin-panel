@@ -459,7 +459,7 @@ function initializeSupabase(url, key) {
 // Authentication
 async function checkAuthStatus() {
   try {
-    const token = localStorage.getItem('auth_token');
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('access_token');
     
     if (!token) {
       userInfoElement.textContent = 'Not logged in';
@@ -478,6 +478,7 @@ async function checkAuthStatus() {
     
     if (!response.ok) {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('access_token');
       userInfoElement.textContent = 'Not logged in';
       showSection('login-section');
       return false;
@@ -487,6 +488,7 @@ async function checkAuthStatus() {
     
     if (!result.success || !result.data?.user) {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('access_token');
       userInfoElement.textContent = 'Not logged in';
       showSection('login-section');
       return false;
@@ -540,6 +542,8 @@ loginForm.addEventListener('submit', async (e) => {
     submitButton.disabled = true;
     
     // Attempt login using custom auth
+    console.log('Attempting login with:', { email, backend_url: BACKEND_URL });
+    
     const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
@@ -548,7 +552,11 @@ loginForm.addEventListener('submit', async (e) => {
       body: JSON.stringify({ email, password })
     });
     
+    console.log('Login response status:', response.status);
+    console.log('Login response headers:', Object.fromEntries(response.headers));
+    
     const result = await response.json();
+    console.log('Login response body:', result);
     
     // Reset button state
     submitButton.textContent = originalButtonText;
@@ -569,8 +577,9 @@ loginForm.addEventListener('submit', async (e) => {
       return;
     }
     
-    // Store auth token
+    // Store auth token - using both names for compatibility
     localStorage.setItem('auth_token', result.data.session.access_token);
+    localStorage.setItem('access_token', result.data.session.access_token);
     
     // Update UI with admin info
     const displayName = user.display_name || `${user.first_name} ${user.last_name}` || user.email;
