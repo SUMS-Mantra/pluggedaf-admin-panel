@@ -1339,43 +1339,212 @@ async function viewOrderDetails(orderId) {
       showNotification('Database client not initialized', 'error');
       return;
     }
-    // Fetch order by ID
+    
+    // Fetch order with items
     const orderResult = await supabase
       .from('orders')
       .select('*')
       .eq('id', orderId)
       .single();
+      
     if (orderResult.error || !orderResult.data) {
       throw new Error(orderResult.error?.message || 'Order not found');
     }
+    
     const order = orderResult.data;
+    
+    // Fetch order items
+    const { data: orderItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select(`
+        *,
+        products (
+          name,
+          image_url
+        )
+      `)
+      .eq('order_id', orderId);
+    
+    if (itemsError) {
+      console.error('Error fetching order items:', itemsError);
+    }
+    
+    // Fetch customer info
     let customerName = 'Unknown Customer';
     let customerEmail = 'No email';
+    let customerPhone = 'N/A';
+    
     if (order.user_id) {
       const { data: user, error: userError } = await supabase
         .from('profiles')
-        .select('display_name, first_name, last_name, email')
+        .select('display_name, first_name, last_name, email, phone')
         .eq('id', order.user_id)
         .single();
+        
       if (user) {
         customerName = user.display_name || `${user.first_name || ''} ${user.last_name || ''}`.trim();
         customerEmail = user.email || 'No email';
+        customerPhone = user.phone || 'N/A';
       }
     }
-    // Populate order details modal
+    
+    // Parse shipping address
+    let shippingAddress = 'No address provided';
+    if (order.shipping_address) {
+      try {
+        const addr = typeof order.shipping_address === 'string' 
+          ? JSON.parse(order.shipping_address) 
+          : order.shipping_address;
+        
+        shippingAddress = `
+          <div class="address-line">${addr.street || ''}</div>
+          <div class="address-line">${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}</div>
+          <div class="address-line">${addr.country || ''}</div>
+        `;
+      } catch (e) {
+        shippingAddress = order.shipping_address;
+      }
+    }
+    
+    // Create order items HTML
+    let orderItemsHtml = '';
+    if (orderItems && orderItems.length > 0) {
+      orderItemsHtml = orderItems.map(item => `
+        <div class="order-item">
+          <div class="item-image">
+            <img src="${item.products?.image_url || '/placeholder-product.png'}" alt="${item.products?.name || 'Product'}" loading="lazy">
+          </div>
+          <div class="item-details">
+            <div class="item-name">${item.products?.name || 'Unknown Product'}</div>
+            <div class="item-meta">
+              <span class="item-quantity">Qty: ${item.quantity}</span>
+              <span class="item-price">$${parseFloat(item.price).toFixed(2)} each</span>
+            </div>
+          </div>
+          <div class="item-total">
+            $${(parseFloat(item.price) * item.quantity).toFixed(2)}
+          </div>
+        </div>
+      `).join('');
+    } else {
+      orderItemsHtml = '<div class="no-items">No items found for this order</div>';
+    }
+    
+    // Get status color class
+    const getStatusClass = (status) => {
+      const statusClasses = {
+        'pending_payment': 'status-pending',
+        'payment_processing': 'status-processing',
+        'payment_confirmed': 'status-confirmed',
+        'processing': 'status-processing',
+        'shipped': 'status-shipped',
+        'delivered': 'status-delivered',
+        'cancelled': 'status-cancelled'
+      };
+      return statusClasses[status] || 'status-default';
+    };
+    
+    // Populate order details modal with professional layout
     const detailsContent = document.getElementById('order-details-content');
     detailsContent.innerHTML = `
-      <div><strong>Order ID:</strong> ${order.id}</div>
-      <div><strong>Customer:</strong> ${customerName} (${customerEmail})</div>
-      <div><strong>Date:</strong> ${new Date(order.created_at).toLocaleString()}</div>
-      <div><strong>Status:</strong> ${order.status.replace(/_/g, ' ')}</div>
-      <div><strong>Total:</strong> $${parseFloat(order.total_amount).toFixed(2)}</div>
-      <div><strong>Payment Method:</strong> ${order.payment_method}</div>
-      <div><strong>Payment Reference:</strong> ${order.payment_reference || 'N/A'}</div>
-      <div><strong>Shipping Address:</strong> ${JSON.stringify(order.shipping_address)}</div>
-      <!-- Add more fields as needed -->
+      <div class="order-details-container">
+        
+        <!-- Order Header -->
+        <div class="order-header">
+          <div class="order-id-section">
+            <h4>Order #${order.id.substring(0, 8).toUpperCase()}</h4>
+            <span class="order-status ${getStatusClass(order.status)}">${order.status.replace(/_/g, ' ').toUpperCase()}</span>
+          </div>
+          <div class="order-date">
+            <strong>Placed:</strong> ${new Date(order.created_at).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </div>
+        </div>
+        
+        <!-- Main Content Grid -->
+        <div class="order-content-grid">
+          
+          <!-- Customer Information -->
+          <div class="info-section">
+            <h5>Customer Information</h5>
+            <div class="info-content">
+              <div class="info-row">
+                <span class="label">Name:</span>
+                <span class="value">${customerName}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Email:</span>
+                <span class="value">${customerEmail}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Phone:</span>
+                <span class="value">${customerPhone}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Payment Information -->
+          <div class="info-section">
+            <h5>Payment Information</h5>
+            <div class="info-content">
+              <div class="info-row">
+                <span class="label">Method:</span>
+                <span class="value payment-method">${order.payment_method?.toUpperCase() || 'N/A'}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Transaction ID:</span>
+                <span class="value transaction-id">${order.payment_reference || 'Pending'}</span>
+              </div>
+              <div class="info-row">
+                <span class="label">Total Amount:</span>
+                <span class="value total-amount">$${parseFloat(order.total_amount).toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Shipping Information -->
+          <div class="info-section full-width">
+            <h5>Shipping Address</h5>
+            <div class="info-content">
+              <div class="shipping-address">
+                ${shippingAddress}
+              </div>
+            </div>
+          </div>
+          
+        </div>
+        
+        <!-- Order Items -->
+        <div class="order-items-section">
+          <h5>Order Items</h5>
+          <div class="order-items-list">
+            ${orderItemsHtml}
+          </div>
+        </div>
+        
+        <!-- Order Actions -->
+        <div class="order-actions">
+          <button type="button" class="btn btn-primary" onclick="updateOrderStatus(${JSON.stringify(order).replace(/"/g, '&quot;')})">
+            Update Status
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="printOrder('${order.id}')">
+            Print Order
+          </button>
+          <button type="button" class="btn btn-outline" onclick="sendOrderEmail('${order.id}')">
+            Send Email
+          </button>
+        </div>
+        
+      </div>
     `;
+    
     document.getElementById('order-modal').classList.remove('hidden');
+    
   } catch (error) {
     console.error('Error fetching order details:', error);
     showNotification(`Error fetching order details: ${error.message}`, 'error');
@@ -1739,5 +1908,138 @@ if (productModal) {
   if (modalContent) {
     modalContent.style.overflowY = 'auto';
     modalContent.style.maxHeight = '90vh';
+  }
+}
+
+// Print order function
+function printOrder(orderId) {
+  try {
+    const orderDetails = document.getElementById('order-details-content');
+    if (!orderDetails) {
+      showNotification('Order details not found', 'error');
+      return;
+    }
+    
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Order #${orderId.substring(0, 8).toUpperCase()}</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+          }
+          .print-header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .company-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+          .order-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+          }
+          .info-section {
+            flex: 1;
+            margin-right: 20px;
+          }
+          .info-section h4 {
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+          }
+          .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+          }
+          .order-items {
+            margin-top: 30px;
+          }
+          .order-items table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .order-items th,
+          .order-items td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+          }
+          .order-items th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+          }
+          .total-row {
+            font-weight: bold;
+            background-color: #f9f9f9;
+          }
+          @media print {
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="print-header">
+          <div class="company-name">PluggedAF</div>
+          <div>Order Invoice</div>
+        </div>
+        ${orderDetails.innerHTML}
+        <div class="no-print" style="margin-top: 30px; text-align: center;">
+          <button onclick="window.print()">Print</button>
+          <button onclick="window.close()">Close</button>
+        </div>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    
+    // Auto print after a brief delay
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+    
+  } catch (error) {
+    console.error('Error printing order:', error);
+    showNotification('Error printing order', 'error');
+  }
+}
+
+// Send order email function
+async function sendOrderEmail(orderId) {
+  try {
+    showNotification('Sending order email...', 'info');
+    
+    const response = await fetch(`${BACKEND_URL}/api/admin/orders/${orderId}/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('auth_token') || localStorage.getItem('access_token')}`
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to send email');
+    }
+    
+    showNotification('Order email sent successfully!', 'success');
+    
+  } catch (error) {
+    console.error('Error sending order email:', error);
+    showNotification(`Error sending email: ${error.message}`, 'error');
   }
 }
