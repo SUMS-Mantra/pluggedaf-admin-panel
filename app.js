@@ -1340,10 +1340,20 @@ async function viewOrderDetails(orderId) {
       return;
     }
     
-    // Fetch order with items
+    // Fetch order with items and customer profile in one query
     const orderResult = await supabase
       .from('orders')
-      .select('*')
+      .select(`
+        *,
+        profiles:user_id (
+          id,
+          email,
+          first_name,
+          last_name,
+          display_name,
+          phone
+        )
+      `)
       .eq('id', orderId)
       .single();
       
@@ -1360,6 +1370,7 @@ async function viewOrderDetails(orderId) {
         *,
         products (
           name,
+          image1,
           image_url
         )
       `)
@@ -1369,50 +1380,64 @@ async function viewOrderDetails(orderId) {
       console.error('Error fetching order items:', itemsError);
     }
     
-    // Fetch customer info
+    // Extract customer info from the joined profiles data
     let customerName = 'Unknown Customer';
     let customerEmail = 'No email';
     let customerPhone = 'N/A';
+    let customerAccountId = 'N/A';
     
-    if (order.user_id) {
-      const { data: user, error: userError } = await supabase
-        .from('profiles')
-        .select('display_name, first_name, last_name, email, phone')
-        .eq('id', order.user_id)
-        .single();
-        
-      if (user) {
-        customerName = user.display_name || `${user.first_name || ''} ${user.last_name || ''}`.trim();
-        customerEmail = user.email || 'No email';
-        customerPhone = user.phone || 'N/A';
-      }
+    if (order.profiles) {
+      const profile = order.profiles;
+      customerName = profile.display_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+      customerEmail = profile.email || 'No email';
+      customerPhone = profile.phone || 'N/A';
+      customerAccountId = profile.id || 'N/A';
     }
     
-    // Parse shipping address
-    let shippingAddress = 'No address provided';
+    // Parse shipping address with your specific JSON structure
+    let shippingInfo = {
+      name: 'No name provided',
+      email: 'No email',
+      address: 'No address provided',
+      phone: 'N/A'
+    };
+    
     if (order.shipping_address) {
       try {
         const addr = typeof order.shipping_address === 'string' 
           ? JSON.parse(order.shipping_address) 
           : order.shipping_address;
         
-        shippingAddress = `
-          <div class="address-line">${addr.street || ''}</div>
-          <div class="address-line">${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}</div>
-          <div class="address-line">${addr.country || ''}</div>
-        `;
+        // Use your exact JSON structure
+        shippingInfo = {
+          name: `${addr.firstName || ''} ${addr.lastName || ''}`.trim() || 'No name',
+          email: addr.email || 'No email',
+          address: `
+            <div class="address-line"><strong>Name:</strong> ${addr.firstName || ''} ${addr.lastName || ''}</div>
+            <div class="address-line"><strong>Address:</strong> ${addr.address || ''}</div>
+            <div class="address-line"><strong>City:</strong> ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}</div>
+            <div class="address-line"><strong>Country:</strong> ${addr.country || ''}</div>
+            ${addr.phoneNumber ? `<div class="address-line"><strong>Phone:</strong> ${addr.phoneNumber}</div>` : ''}
+            ${addr.email && addr.email !== customerEmail ? `<div class="address-line"><strong>Shipping Email:</strong> ${addr.email}</div>` : ''}
+          `,
+          phone: addr.phoneNumber || 'N/A'
+        };
       } catch (e) {
-        shippingAddress = order.shipping_address;
+        console.error('Error parsing shipping address:', e);
+        shippingInfo.address = order.shipping_address;
       }
     }
     
     // Create order items HTML
     let orderItemsHtml = '';
     if (orderItems && orderItems.length > 0) {
-      orderItemsHtml = orderItems.map(item => `
+      orderItemsHtml = orderItems.map(item => {
+        // Use image1 first, then fallback to image_url
+        const productImage = item.products?.image1 || item.products?.image_url || '/placeholder-product.png';
+        return `
         <div class="order-item">
           <div class="item-image">
-            <img src="${item.products?.image_url || '/placeholder-product.png'}" alt="${item.products?.name || 'Product'}" loading="lazy">
+            <img src="${productImage}" alt="${item.products?.name || 'Product'}" loading="lazy">
           </div>
           <div class="item-details">
             <div class="item-name">${item.products?.name || 'Unknown Product'}</div>
@@ -1425,7 +1450,7 @@ async function viewOrderDetails(orderId) {
             $${(parseFloat(item.price) * item.quantity).toFixed(2)}
           </div>
         </div>
-      `).join('');
+      `}).join('');
     } else {
       orderItemsHtml = '<div class="no-items">No items found for this order</div>';
     }
