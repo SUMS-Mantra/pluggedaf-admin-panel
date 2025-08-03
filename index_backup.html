@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co http://localhost:*; img-src 'self' data:;">
+  <link rel="stylesheet" href="styles/theme.css">
+  <link rel="stylesheet" href="styles/products.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="supabase.js"></script>
+  <title>Plugged Admin Dashboard</title>
+  
+  <!-- Theme detection script -->
+  <script>
+    // Initialize theme before the page loads
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const storedTheme = localStorage.getItem('theme');
+    const theme = storedTheme || (prefersDark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  </script>
+</head>
+<body>
+  <!-- Enhanced Notification Modal with improved UX -->
+  <div id="notification-modal" class="modal hidden">
+    <div class="modal-content notification-modal-content">
+      <div class="modal-header">
+        <h3 id="notification-modal-title">Notification</h3>
+        <button type="button" class="close-modal-btn" id="notification-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="notification-modal-message"></p>
+      </div>
+      <div class="modal-footer">
+        <button id="notification-modal-ok" class="primary-btn">OK</button>
+      </div>
+    </div>
+  </div>
+  <div class="app-container">
+    <header>
+      <h1>Plugged Admin Dashboard</h1>
+      <div class="header-controls">
+        <button id="theme-toggle" class="theme-toggle" title="Toggle theme">
+          <span class="light-icon">🌙</span>
+          <span class="dark-icon">☀️</span>
+        </button>
+        <div id="user-info">Not logged in</div>
+      </div>
+    </header>
+    
+    <nav>
+      <ul>
+        <li><button id="nav-dashboard" class="nav-btn active">Dashboard</button></li>
+        <li><button id="nav-products" class="nav-btn">Products</button></li>
+        <li><button id="nav-orders" class="nav-btn">Orders</button></li>
+        <li><button id="nav-users" class="nav-btn">Users</button></li>
+        <li><button id="nav-settings" class="nav-btn">Settings</button></li>
+      </ul>
+    </nav>
+    
+    <main>
+      <section id="login-section" class="section">
+        <h2>Login</h2>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" required>
+          </div>
+          <button type="submit">Login</button>
+        </form>
+      </section>
+
+      <section id="dashboard-section" class="section hidden">
+        <h2>Dashboard Overview</h2>
+        <div class="dashboard-cards">
+          <div class="card">
+            <h3>Total Orders</h3>
+            <p id="total-orders">Loading...</p>
+          </div>
+          <div class="card">
+            <h3>Total Revenue</h3>
+            <p id="total-revenue">Loading...</p>
+          </div>
+          <div class="card">
+            <h3>Total Users</h3>
+            <p id="total-users">Loading...</p>
+          </div>
+          <div class="card">
+            <h3>Total Products</h3>
+            <p id="total-products">Loading...</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="products-section" class="section hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold">Products Management</h2>
+          <button id="add-product-btn" class="action-btn flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            Add New Product
+          </button>
+        </div>
+
+        <div class="table-container bg-white dark:bg-gray-800 rounded-lg shadow-md">
+          <div class="overflow-x-auto">
+            <table id="products-table" class="w-full">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Product Info</th>
+                  <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
+                  <th class="py-3 px-6 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Price</th>
+                  <th class="py-3 px-6 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Stock</th>
+                  <th class="py-3 px-6 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                  <th class="py-3 px-6 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="products-list" class="divide-y divide-gray-200 dark:divide-gray-600"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="product-modal" class="modal hidden">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 id="product-modal-title">Add/Edit Product</h3>
+              <button type="button" class="close-modal-btn" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+            <form id="product-form">
+              <input type="hidden" id="product-id">
+              <div class="form-group">
+                <label for="product-name">Name</label>
+                <input type="text" id="product-name" required>
+              </div>
+              <div class="form-group">
+                <label for="product-description">Description</label>
+                <textarea id="product-description" rows="4"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="product-price">Price ($)</label>
+                <input type="number" id="product-price" min="0" step="0.01" required>
+              </div>
+              <div class="form-group">
+                <label for="product-stock">Stock Quantity</label>
+                <input type="number" id="product-stock" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="product-category">Category</label>
+                <input type="text" id="product-category">
+              </div>
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="product-bestseller">
+                <label for="product-bestseller">Bestseller</label>
+              </div>
+              <div class="form-group">
+                <label for="product-image1">Image 1 URL</label>
+                <input type="url" id="product-image1">
+              </div>
+              <div class="form-group">
+                <label for="product-image2">Image 2 URL</label>
+                <input type="url" id="product-image2">
+              </div>
+              <div class="form-group">
+                <label for="product-image3">Image 3 URL</label>
+                <input type="url" id="product-image3">
+              </div>
+              <div class="form-group">
+                <label for="product-image4">Image 4 URL</label>
+                <input type="url" id="product-image4">
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="primary-btn">Save Product</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="orders-section" class="section hidden">
+        <h2>Orders Management</h2>
+        <div class="table-container">
+          <table id="orders-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="orders-list"></tbody>
+          </table>
+        </div>
+        <div id="order-modal" class="modal hidden">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Order Details</h3>
+              <button type="button" class="close-modal-btn" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div id="order-details"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="users-section" class="section hidden">
+        <h2>Users Management</h2>
+        <div class="table-container">
+          <table id="users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-list"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="settings-section" class="section hidden">
+        <h2>Settings</h2>
+        <form id="settings-form">
+          <div class="form-group">
+            <label for="supabase-url">Supabase URL</label>
+            <input type="url" id="supabase-url" required>
+          </div>
+          <div class="form-group">
+            <label for="supabase-key">Supabase Key</label>
+            <input type="text" id="supabase-key" required>
+          </div>
+          <button type="submit">Save Settings</button>
+          <button type="button" id="verify-db-btn" style="margin-left: 10px; background-color: #4285F4;">Verify Database</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
