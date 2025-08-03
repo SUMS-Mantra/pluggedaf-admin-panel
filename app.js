@@ -64,7 +64,23 @@ function waitForWebAPI() {
 }
 
 // DOM Elements
-const BACKEND_URL = 'http://localhost:8000'; // Development backend URL
+let BACKEND_URL = 'http://localhost:8000'; // Default fallback
+let backendConfig = null;
+
+// Get backend configuration from server
+async function initializeBackendConfig() {
+  try {
+    const response = await fetch('/api/config/backend');
+    backendConfig = await response.json();
+    BACKEND_URL = backendConfig.apiUrl;
+    console.log('Backend configuration loaded:', backendConfig);
+    console.log('Using backend URL:', BACKEND_URL);
+  } catch (error) {
+    console.error('Failed to load backend configuration, using fallback:', error);
+    // Keep the default fallback URL
+  }
+}
+
 const sections = document.querySelectorAll('.section');
 const navButtons = document.querySelectorAll('.nav-link');
 const loginSection = document.getElementById('login-section');
@@ -284,6 +300,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     // Wait for webAPI to be available
     await waitForWebAPI();
+    
+    // Initialize backend configuration
+    await initializeBackendConfig();
     
     // Force dark mode only
     document.documentElement.classList.add('dark');
