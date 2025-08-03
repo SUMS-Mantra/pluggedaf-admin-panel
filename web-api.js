@@ -1,5 +1,34 @@
 // Web API client - replaces Electron preload functionality
 window.webAPI = {
+  // Backend API configuration
+  backendConfig: null,
+
+  // Initialize backend configuration
+  async initBackendConfig() {
+    if (!this.backendConfig) {
+      try {
+        const response = await fetch('/api/config/backend');
+        this.backendConfig = await response.json();
+        console.log('Backend config loaded:', this.backendConfig);
+      } catch (error) {
+        console.error('Failed to load backend config:', error);
+        // Fallback to local development
+        this.backendConfig = {
+          apiUrl: 'http://localhost:8000',
+          environment: 'development',
+          isProduction: false
+        };
+      }
+    }
+    return this.backendConfig;
+  },
+
+  // Get backend API URL
+  async getBackendUrl() {
+    const config = await this.initBackendConfig();
+    return config.apiUrl;
+  },
+
   // Configuration management
   async getSupabaseConfig() {
     try {
@@ -117,6 +146,88 @@ window.webAPI = {
   requestDatabaseVerification() {
     const event = new CustomEvent('verify-database-request');
     window.dispatchEvent(event);
+  },
+
+  // Backend API integration methods
+  async callBackendAPI(endpoint, options = {}) {
+    try {
+      const baseUrl = await this.getBackendUrl();
+      const url = `${baseUrl}${endpoint}`;
+      
+      // Get auth token if available
+      const session = await this.getSession();
+      const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+      };
+
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
+
+      if (!response.ok) {
+        throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Backend API call failed:', error);
+      throw error;
+    }
+  },
+
+  // Backend API methods
+  async testBackendConnection() {
+    try {
+      const result = await this.callBackendAPI('/api/health');
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getBackendProducts() {
+    try {
+      const result = await this.callBackendAPI('/api/products');
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getBackendOrders() {
+    try {
+      const result = await this.callBackendAPI('/api/orders');
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async getBackendUsers() {
+    try {
+      const result = await this.callBackendAPI('/api/users');
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async updateOrderStatus(orderId, status) {
+    try {
+      const result = await this.callBackendAPI(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status })
+      });
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 };
 

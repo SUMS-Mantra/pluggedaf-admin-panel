@@ -1,80 +1,291 @@
-# Plugged Admin Dashboard
+# PluggedAF Admin Panel
 
-A simple Electron-based admin dashboard for the Plugged E-commerce platform.
+🚀 **Web-based Administration Interface for PluggedAF E-commerce Platform**
 
-## Features
+A modern, responsive admin panel built for managing your PluggedAF e-commerce store. This web application provides a comprehensive dashboard for managing products, orders, users, and analytics.
 
-- Product management (add, edit, delete)
-- Order management and status updates
-- User management
-- Dashboard with key metrics
-- Secure authentication
-- Enhanced notification system
-- Database schema verification
-- Environment variable management
+## ✨ Features
 
-## Installation
+### 📦 Product Management
+- ✅ Add, edit, and delete products
+- 🖼️ Multi-image upload (up to 4 images per product)
+- 📊 Inventory tracking with stock quantity
+- 🏷️ Category management
+- ⭐ Bestseller designation
+- 💰 Pricing management (retail vs. sale price)
 
-1. Make sure you have Node.js installed (version 16+ recommended)
+### 📋 Order Management
+- 📱 View and track all orders
+- 🔄 Update order status (pending, processing, shipped, delivered)
+- 👤 Customer information access
+- 💵 Order total and item details
+- 📅 Order date and status history
 
-2. Install dependencies:
+### 👥 User Management
+- 👤 View all registered users
+- 🔐 Manage user roles and permissions
+- 📊 User activity monitoring
+- 🛡️ Account status management
 
+### 📈 Dashboard & Analytics
+- 📊 Real-time sales metrics
+- 📈 Revenue tracking
+- 👥 User growth statistics
+- 📦 Inventory alerts
+- 🚨 Low stock notifications
+
+### 🔒 Security Features
+- 🔐 Secure authentication system
+- 🛡️ Role-based access control
+- 🔑 Environment variable configuration
+- 🌐 CORS protection
+- 📝 Activity logging
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 16+ 
+- npm or yarn
+- Supabase account and project
+
+### Installation
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/SUMS-Mantra/pluggedaf-admin-panel.git
+cd pluggedaf-admin-panel
+```
+
+2. **Install dependencies:**
 ```bash
 npm install
 ```
 
-## Running the Application
+3. **Configure environment variables:**
+Create a `.env` file in the root directory:
+```env
+# Supabase connection
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-You can run the application in two ways:
+# Optional: Custom port (default: 3001)
+PORT=3001
+```
 
-### Using npm from the Plugged_Admin directory
-
+4. **Start the application:**
 ```bash
-cd Plugged_Admin
 npm start
 ```
 
-### Using the start script from the root directory
+The admin panel will be available at `http://localhost:3001`
 
-For convenience, a start script is provided in the root directory:
+### Alternative Start Methods
 
+**Using the convenience script:**
 ```bash
-start-admin.cmd
+start-admin.cmd  # Windows
 ```
 
-The application will automatically create a sample `.env` file if one doesn't exist.
-
-## Configuration
-
-There are two ways to configure your Supabase connection:
-
-### Using .env file (recommended)
-
-1. Create a `.env` file in the root directory with the following content:
+**Using the web interface:**
+```bash
+npm run web
 ```
-# Supabase connection (replace with your actual values)
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SUPABASE_URL` | Your Supabase project URL | ✅ |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key | ✅ |
+| `PORT` | Server port (default: 3001) | ❌ |
+
+### Supabase Setup
+
+1. **Create a Supabase project** at [supabase.com](https://supabase.com)
+
+2. **Set up the database schema** by running the provided SQL scripts:
+   - Product tables
+   - Order management tables
+   - User management tables
+   - Cart functionality tables
+
+3. **Configure Storage** for product images:
+   - Create a `product-images` bucket
+   - Set up proper RLS policies
+   - Enable public read access
+
+4. **Get your credentials:**
+   - Project URL: `https://your-project.supabase.co`
+   - Service Role Key: Found in Settings > API
+
+### Configuration Methods
+
+**Method 1: Environment File (Recommended)**
+```env
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
-2. The app will automatically load these values when it starts
+**Method 2: Settings UI**
+Navigate to the Settings section in the admin panel and enter your credentials directly.
 
-### Using the Settings UI
+## 📸 Screenshots
 
-1. Enter your Supabase URL and API Key in the Settings section
+### Dashboard Overview
+![Dashboard](https://via.placeholder.com/800x400/6366f1/ffffff?text=Dashboard+Overview)
 
-## Troubleshooting
+### Product Management
+![Products](https://via.placeholder.com/800x400/10b981/ffffff?text=Product+Management)
 
-### Database Connection Issues
+### Order Tracking
+![Orders](https://via.placeholder.com/800x400/f59e0b/ffffff?text=Order+Management)
 
-If you're experiencing database connection issues:
+## 🛠️ Tech Stack
 
-1. Verify your Supabase URL and key in the Settings section
-2. Use the "Verify Connection" option from the Database menu
-3. Check that your Supabase project is active and the service is running
-4. Ensure your IP address is not blocked by Supabase restrictions
+- **Frontend:** HTML5, CSS3, JavaScript (ES6+)
+- **Styling:** Tailwind CSS, Custom CSS
+- **Backend Integration:** Supabase (PostgreSQL)
+- **File Storage:** Supabase Storage
+- **Authentication:** Supabase Auth
+- **Runtime:** Node.js + Express
+- **Image Processing:** Client-side upload with validation
 
-### Database Schema Issues
+## 📁 Project Structure
+
+```
+pluggedaf-admin-panel/
+├── 📄 index.html              # Main admin interface
+├── 🎨 styles.css              # Core styling
+├── 🎨 styles-modern.css       # Modern UI components
+├── ⚡ app.js                  # Main application logic
+├── 🌐 web-api.js              # API communication layer
+├── 🗄️ supabase.js             # Supabase client setup
+├── 🔧 server.js               # Express server for web mode
+├── 📦 package.json            # Dependencies and scripts
+├── 🔒 .env                    # Environment configuration
+├── 📚 README.md               # This file
+└── 🚀 start-admin.cmd         # Windows start script
+```
+
+## 🚀 Deployment
+
+### Local Development
+```bash
+npm start
+```
+
+### Production Deployment
+
+1. **Set environment variables** in your hosting platform
+2. **Build the project** (if applicable)
+3. **Start the server:**
+```bash
+npm run start:prod
+```
+
+### Docker Deployment
+```dockerfile
+FROM node:16-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+EXPOSE 3001
+CMD ["npm", "start"]
+```
+
+## 🔧 API Endpoints
+
+The admin panel communicates with your PluggedAF backend API:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/products` | GET | Fetch all products |
+| `/api/products` | POST | Create new product |
+| `/api/products/:id` | PUT | Update product |
+| `/api/products/:id` | DELETE | Delete product |
+| `/api/orders` | GET | Fetch all orders |
+| `/api/orders/:id` | PUT | Update order status |
+| `/api/users` | GET | Fetch all users |
+| `/api/users/:id` | PUT | Update user role |
+
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**🔌 Database Connection Issues**
+- ✅ Verify Supabase URL and service role key
+- ✅ Check Supabase project status
+- ✅ Use "Verify Connection" in Database menu
+- ✅ Ensure IP address isn't blocked
+
+**📦 Product Image Upload Issues**
+- ✅ Check Supabase storage bucket configuration
+- ✅ Verify RLS policies for `product-images` bucket
+- ✅ Ensure public read access is enabled
+- ✅ Check file size limits (max 5MB per image)
+
+**🔐 Authentication Problems**
+- ✅ Verify service role key has proper permissions
+- ✅ Check Supabase authentication settings
+- ✅ Ensure admin user exists in users table
+
+**🌐 CORS Issues**
+- ✅ Update CORS settings in backend server
+- ✅ Add admin panel URL to allowed origins
+- ✅ Check browser console for CORS errors
+
+### Database Schema Verification
+
+Use the built-in schema verification tool:
+1. Go to Database → Verify Schema
+2. The system will check for required tables and columns
+3. Follow suggested fixes for any missing components
+
+## 🤝 Contributing
+
+1. **Fork the repository**
+2. **Create a feature branch:** `git checkout -b feature/amazing-feature`
+3. **Commit your changes:** `git commit -m 'Add amazing feature'`
+4. **Push to the branch:** `git push origin feature/amazing-feature`
+5. **Open a Pull Request**
+
+### Development Guidelines
+
+- Follow existing code style and formatting
+- Add comments for complex functionality
+- Test thoroughly before submitting PR
+- Update documentation as needed
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation:** Check this README and inline code comments
+- **Issues:** Report bugs via GitHub Issues
+- **Questions:** Create a discussion thread
+- **Email:** Contact the development team
+
+## 🔗 Related Projects
+
+- **[PluggedAF Frontend](https://github.com/SUMS-Mantra/pluggedaf-frontend)** - Customer-facing e-commerce site
+- **[PluggedAF Backend](https://github.com/SUMS-Mantra/pluggedaf-backend)** - API server and business logic
+- **[PluggedAF Mobile](https://github.com/SUMS-Mantra/pluggedaf-mobile)** - Mobile application
+
+## ⭐ Acknowledgments
+
+- Built with ❤️ for the PluggedAF e-commerce platform
+- Powered by Supabase for backend infrastructure
+- UI inspired by modern admin dashboard designs
+- Thanks to all contributors and testers
+
+---
+
+**Made with ⚡ by the PluggedAF Team**
 
 If your database schema verification fails:
 

@@ -5,12 +5,17 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js",
+    "start:dev": "NODE_ENV=development node server.js",
     "dev": "nodemon server.js",
     "electron": "electron main.js",
     "electron-dev": "electron main.js --dev",
     "test": "node server.js --test-supabase",
+    "test:backend": "node -e \"require('./test-backend-connection.js')\"",
     "build": "echo 'Web app ready - no build needed'",
-    "postinstall": "echo 'Setup complete'"
+    "postinstall": "echo 'Setup complete'",
+    "deploy:render": "echo 'Push to main branch to deploy on Render'",
+    "deploy:vercel": "vercel --prod"
   },
   "build": {
     "appId": "com.plugged.admin",
@@ -38,6 +43,7 @@
     "axios": "^1.6.2",
     "dotenv": "^17.2.0",
     "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
     "nodemon": "^3.0.2"
   },
   "devDependencies": {

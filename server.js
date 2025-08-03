@@ -16,11 +16,23 @@ if (fs.existsSync(envPath)) {
   // Create a sample .env file if it doesn't exist
   console.log('Creating sample .env file...');
   const sampleEnv = [
+    '# Environment Configuration',
+    'NODE_ENV=development',
+    'PORT=3001',
+    '',
     '# Supabase connection (replace with your actual values)',
     'SUPABASE_URL=https://your-project.supabase.co',
     'SUPABASE_SERVICE_ROLE_KEY=your-service-role-key',
-    '# Backend API URL',
-    'BACKEND_URL=http://localhost:8000'
+    '',
+    '# Backend API Configuration',
+    'BACKEND_API_URL=https://your-backend-api.onrender.com',
+    'BACKEND_API_URL_LOCAL=http://localhost:8000',
+    '',
+    '# Security',
+    'JWT_SECRET=your-jwt-secret-key',
+    '',
+    '# CORS Configuration',
+    'FRONTEND_URL=http://localhost:3000'
   ].join('\n');
   
   try {
@@ -32,11 +44,39 @@ if (fs.existsSync(envPath)) {
 }
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// CORS configuration for production
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://localhost:3000',
+  'https://localhost:3001',
+  process.env.FRONTEND_URL,
+  process.env.ADMIN_URL
+].filter(Boolean);
+
+// Enable CORS
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || NODE_ENV === 'development') {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Serve static files
 app.use(express.static(path.join(__dirname)));
@@ -46,6 +86,16 @@ app.get('/api/config/supabase', (req, res) => {
   res.json({
     url: process.env.SUPABASE_URL || '',
     key: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  });
+});
+
+// Backend API configuration
+app.get('/api/config/backend', (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.json({
+    apiUrl: isProduction ? process.env.BACKEND_API_URL : process.env.BACKEND_API_URL_LOCAL,
+    environment: process.env.NODE_ENV || 'development',
+    isProduction
   });
 });
 
@@ -111,12 +161,32 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Plugged Admin Web Server running on http://localhost:${PORT}`);
-  console.log(`📁 Serving files from: ${__dirname}`);
+  console.log('\n🚀 PluggedAF Admin Panel Starting...');
+  console.log('─'.repeat(50));
+  console.log(`🌐 Server: http://localhost:${PORT}`);
+  console.log(`📁 Directory: ${__dirname}`);
+  console.log(`🔧 Environment: ${NODE_ENV}`);
+  console.log(`📡 Backend API: ${process.env.BACKEND_API_URL || process.env.BACKEND_API_URL_LOCAL || 'Not configured'}`);
   
   if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.log('✅ Supabase configuration loaded from environment');
+    console.log('✅ Supabase: Connected');
   } else {
-    console.log('⚠️  Supabase configuration not found. Please check your .env file.');
+    console.log('⚠️  Supabase: Configuration missing');
   }
+  
+  console.log('─'.repeat(50));
+  console.log('📋 Available endpoints:');
+  console.log('   • GET  /                    - Admin Panel Interface');
+  console.log('   • GET  /api/config/backend  - Backend Configuration');
+  console.log('   • GET  /api/config/supabase - Supabase Configuration');
+  console.log('   • POST /api/verify-database - Database Schema Check');
+  console.log('─'.repeat(50));
+  
+  if (NODE_ENV === 'production') {
+    console.log('🏭 Production mode active');
+  } else {
+    console.log('🔧 Development mode - CORS enabled for all origins');
+  }
+  
+  console.log('\n🎯 Admin panel ready! Open your browser to get started.\n');
 });
